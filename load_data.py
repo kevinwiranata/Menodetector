@@ -14,8 +14,30 @@ elif torch.backends.mps.is_available():
 else:
     DEVICE = torch.device("cpu")
 
+def draw_null_rate(df, data_class, condition):
+    null_rate_per_id = df.drop('SWANID1', axis=1).groupby(df['SWANID1']).apply(lambda x: (x.isna()).mean(axis=1).mean())
+    null_rate_per_id.head()
+    plt.hist(null_rate_per_id)
+    plt.title(f'Null Rate for Patients in {data_class} dataset {condition} Cleaning')
+    plt.xlabel('Null Rate')
+    plt.ylabel('Count of Patients')
+    plt.grid(axis='x')
+    plt.show()
+
+    plt.figure(figsize=(15, 15))
+    nan_percentage = df[df.columns].isna().mean()
+    print(type(nan_percentage))
+    nan_percentage.sort_values().plot(kind="barh", color='skyblue')
+    plt.title(f'Missing Rate In Each Column in {data_class} dataset {condition} Cleaning')
+    plt.xlabel('feature')
+    plt.ylabel('missing rate')
+    plt.grid(axis='x')
+    plt.xticks(fontsize='small')
+    plt.show()
 
 def clean_invalid_values(df, columns, data_class):
+    # Calculate the null rate across features for each unique ID
+    draw_null_rate(df, data_class, "before")
     for column in columns:
         if column in df.columns:
             # Strip leading/trailing spaces and replace values with length <= 2 with NaN
@@ -30,12 +52,13 @@ def clean_invalid_values(df, columns, data_class):
     df.drop(columns=columns_to_drop, inplace=True)
     nan_percentage_new = df[df.columns].isna().mean()
     print(type(nan_percentage_new))
-    nan_percentage_new.plot(kind="bar")
-    plt.title(f"Missing Rate In Each Column for {data_class}")
-    plt.xlabel("feature")
-    plt.ylabel("missing rate")
-    plt.xticks(fontsize="small")
-    plt.show()
+    draw_null_rate(df, data_class, "after")
+    #nan_percentage_new.plot(kind="bar")
+    #plt.title(f"Missing Rate In Each Column for {data_class}")
+    #plt.xlabel("feature")
+    #plt.ylabel("missing rate")
+    #plt.xticks(fontsize="small")
+    #plt.show()
 
     return df
 
