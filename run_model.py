@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from sklearn.model_selection import train_test_split
 from load_data import load_data
+from data_preprocessing import demographic_research
 import torch
 
 
@@ -131,6 +132,7 @@ def grid_search(
 def main():
 
     args = get_args()
+    demographic_research()
     lifestyle_tensor, symptom_tensor = load_data()
     output_size = symptom_tensor.shape[1]
     train_epoch, train_batch_size, train_lr, train_hidden_layer_size = None, None, None, None

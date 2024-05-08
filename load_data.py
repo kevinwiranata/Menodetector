@@ -4,6 +4,7 @@ import numpy as np
 from nltk.stem import PorterStemmer
 from nltk import download
 import matplotlib.pyplot as plt
+from data_preprocessing import show_income
 
 download("punkt")
 
@@ -24,7 +25,7 @@ def draw_null_rate(df, data_class, condition):
     plt.grid(axis='x')
     plt.show()
 
-    plt.figure(figsize=(15, 15))
+    plt.figure(figsize=(10, 10))
     nan_percentage = df[df.columns].isna().mean()
     print(type(nan_percentage))
     nan_percentage.sort_values().plot(kind="barh", color='skyblue')
@@ -32,7 +33,7 @@ def draw_null_rate(df, data_class, condition):
     plt.xlabel('feature')
     plt.ylabel('missing rate')
     plt.grid(axis='x')
-    plt.xticks(fontsize='small')
+    plt.xticks(fontsize='xx-small')
     plt.show()
 
 def clean_invalid_values(df, columns, data_class):
@@ -171,8 +172,8 @@ def transform_to_tensor(df, mode):
 
 
 # preprocess the data
-def preprocess(file, data_class):
-    df = pd.read_csv(file, sep="\t")
+def preprocess(df, data_class):
+
     stemmer = PorterStemmer()
     data_type = {"categorical": [], "numerical": []}
 
@@ -228,9 +229,13 @@ def preprocess(file, data_class):
 
 
 def load_data():
-    symptom = preprocess("data/merged_symptom_only.tsv", "Symptoms")
-    life_style = preprocess("data/merged_lifestyle_only.tsv", "Lifestyle")
+    symptom_df = pd.read_csv("data/merged_symptom_only.tsv", sep="\t")
+    life_style_df = pd.read_csv("data/merged_lifestyle_only.tsv", sep="\t")
+    show_income(life_style_df)
+    symptom = preprocess(symptom_df, "Symptom")
+    life_style = preprocess(life_style_df, "Lifestyle")
     symptom = symptom.drop(["PREGNAN1", "PRGNANT1", "BROKEBO1"], axis=1)
+
     lifestyle_tensor = transform_to_tensor(life_style, "lifestyle")
     symptom_tensor = transform_to_tensor(symptom, "symptom")
     return lifestyle_tensor, symptom_tensor
