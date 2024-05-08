@@ -64,10 +64,10 @@ Example commands:
 <div><pre><code>python3 run_model.py -g True
 </code></pre></div>
 
-1. Use optimal parameters (no grid search)
+2. Use optimal parameters (no grid search)
 <div><pre><code>python3 run_model.py -op True
 </code></pre></div>
 
-1. Specificy Hyperparameters
+3. Specificy Hyperparameters
 <div><pre><code>python3 run_model.py -e 10 -lr 0.001 -hl 100 -b 32
 </code></pre></div>
