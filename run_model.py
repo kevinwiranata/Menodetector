@@ -27,7 +27,7 @@ def get_args():
     parser.add_argument("-e", "--epochs", type=int, default=10, help="Number of epochs to train the model")
     parser.add_argument("-b", "--batch_size", type=int, default=32, help="Batch size for training")
     parser.add_argument("-lr", "--learning_rate", type=float, default=0.001, help="Learning rate for training")
-    parser.add_argument("-h", "--hidden_layer_size", type=int, default=100, help="Hidden layer size for LSTM")
+    parser.add_argument("-hl", "--hidden_layer_size", type=int, default=100, help="Hidden layer size for LSTM")
     args = parser.parse_args()
     return args
 
