@@ -19,19 +19,15 @@ seq_length = 6  # number of years
 
 def get_args():
     parser = argparse.ArgumentParser(description="Menopause training loop")
-
-    # Model hyperparameters
-    parser.add_argument("--finetune", action="store_true", help="Whether to finetune T5 or not")
-
     # Training hyperparameters
     parser.add_argument("-g", "--grid_search", type=bool, default=False, help="Whether to perform grid search or not")
     parser.add_argument(
         "-op", "--use_optimal_params", type=bool, default=False, help="Whether to use optimal params or not"
     )
-    parser.add_argument("--epochs", type=int, default=10, help="Number of epochs to train the model")
-    parser.add_argument("--batch_size", type=int, default=32, help="Batch size for training")
-    parser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate for training")
-    parser.add_argument("--hidden_layer_size", type=int, default=100, help="Hidden layer size for LSTM")
+    parser.add_argument("-e", "--epochs", type=int, default=10, help="Number of epochs to train the model")
+    parser.add_argument("-b", "--batch_size", type=int, default=32, help="Batch size for training")
+    parser.add_argument("-lr", "--learning_rate", type=float, default=0.001, help="Learning rate for training")
+    parser.add_argument("-h", "--hidden_layer_size", type=int, default=100, help="Hidden layer size for LSTM")
     args = parser.parse_args()
     return args
 

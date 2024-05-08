@@ -45,3 +45,27 @@ Predict the severity of Menopausal symptoms based on a patient's lifestyle!
 
 - We use [Python Black](https://pypi.org/project/black/) as our formatting editor, which can installed as as [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter).
 - We recommend enabling `Format on Save` and `Format on Type` in VSCode as well
+
+
+<h2> Running</h2>
+To run the code simply run the <code>run_model.py</code> file.
+<div><pre><code>python3 run_model.py
+</code></pre></div>
+
+There are several arg options when running this file:
+- `--grid_search` to run grid search
+- `--use_optimal_params` to use optimal params
+- `--epochs`, `--learning_rate`, `--hidden_layer_size`, `--batch_size` to specificy hyperparameters
+
+Example commands:
+1. Run grid search
+<div><pre><code>python3 run_model.py -g True
+</code></pre></div>
+
+2. Use optimal parameters (no grid search)
+<div><pre><code>python3 run_model.py -op True
+</code></pre></div>
+
+3. Specificy Hyperparameters
+<div><pre><code>python3 run_model.py -e 10 -lr 0.001 -h 100 -b 32
+</code></pre></div>
