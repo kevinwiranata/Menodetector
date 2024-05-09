@@ -45,6 +45,7 @@ def get_args():
     parser.add_argument("-b", "--batch_size", type=int, default=32, help="Batch size for training")
     parser.add_argument("-lr", "--learning_rate", type=float, default=0.001, help="Learning rate")
     parser.add_argument("-hl", "--hidden_layer_size", type=int, default=100, help="Hidden layer size for LSTM")
+    parser.add_argument("-p", "--predictionwise_loss", action="store_true", default=False, help="Whether calculate prediction-wise loss")
     parser.add_argument("-s", "--silent", action="store_true", default=False, help="Whether to suppress output")
     args = parser.parse_args()
     return args
@@ -88,6 +89,54 @@ def train(model, train_loader, val_loader, epochs, optimizer, loss_function):
     avg_train_loss = sum(train_losses) / len(train_losses)
     avg_val_loss = sum(val_losses) / len(val_losses)
     return avg_train_loss, avg_val_loss
+
+
+
+def train_per_target(model, train_loader, val_loader, epochs, optimizer, loss_function):
+    model = model.to(DEVICE)
+    num_targets = None
+
+    for epoch in range(epochs):
+        model.train()
+        train_losses = []
+        for X_batch, y_batch in train_loader:
+            X_batch, y_batch = X_batch.to(DEVICE), y_batch.to(DEVICE)
+            optimizer.zero_grad()
+            predictions = model(X_batch)
+            loss = loss_function(predictions, y_batch, reduction='none')
+            loss.mean().backward()
+            optimizer.step()
+            train_losses.append(loss.detach().cpu().numpy())
+
+        if num_targets is None:
+            num_targets = train_losses[0].shape[1]
+            train_losses_per_target = [0.0] * num_targets
+
+        for loss_array in train_losses:
+            for i in range(num_targets):
+                train_losses_per_target[i] += loss_array[:, i].sum()
+
+        num_train_samples = len(train_loader.dataset)
+        avg_train_loss_per_target = [total_loss / num_train_samples for total_loss in train_losses_per_target]
+
+        model.eval()
+        val_losses = []
+        with torch.no_grad():
+            for X_batch, y_batch in val_loader:
+                X_batch, y_batch = X_batch.to(DEVICE), y_batch.to(DEVICE)
+                predictions = model(X_batch)
+                loss = loss_function(predictions, y_batch, reduction='none')
+                val_losses.append(loss.cpu().numpy())
+
+        val_losses_per_target = [0.0] * num_targets
+        for loss_array in val_losses:
+            for i in range(num_targets):
+                val_losses_per_target[i] += loss_array[:, i].sum()
+
+        num_val_samples = len(val_loader.dataset)
+        avg_val_loss_per_target = [total_loss / num_val_samples for total_loss in val_losses_per_target]
+
+    return avg_train_loss_per_target, avg_val_loss_per_target
 
 
 def grid_search(X_train, y_train, X_val, y_val, output_size, param_grid):
@@ -153,32 +202,36 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=train_lr)
     loss_function = nn.MSELoss()
 
-    avg_train_loss, avg_val_loss = train(model, train_loader, val_loader, train_epoch, optimizer, loss_function)
-    print(f"Final Training Loss: {avg_train_loss}, Final Validation Loss: {avg_val_loss}")
+    if args.predictionwise_loss:
+        avg_train_loss, avg_val_loss = train_per_target(model, train_loader, val_loader, train_epoch, optimizer, loss_function)
+        print(f"Final Training Loss: {avg_train_loss}, Final Validation Loss: {avg_val_loss}")
+    else:
+        avg_train_loss, avg_val_loss = train(model, train_loader, val_loader, train_epoch, optimizer, loss_function)
+        print(f"Final Training Loss: {avg_train_loss}, Final Validation Loss: {avg_val_loss}")
 
-    # Run baseline models
-    features = lifestyle_tensor.float()
-    targets = symptom_tensor.float()
-    features_time_avg = features.mean(dim=1)
-    random_forest_baseline(features_time_avg, targets)
-    SVR_baseline(features_time_avg, targets)
+        # Run baseline models
+        features = lifestyle_tensor.float()
+        targets = symptom_tensor.float()
+        features_time_avg = features.mean(dim=1)
+        random_forest_baseline(features_time_avg, targets)
+        SVR_baseline(features_time_avg, targets)
 
-    # Run Captum Analysis here and other plots
-    model.to(DEVICE).float()
+        # Run Captum Analysis here and other plots
+        model.to(DEVICE).float()
 
-    # Prepare data for visualization
-    ### TEST_INPUT SHOULD BE THE TRAINING DATASET AS A TENSOR, CONVERTED TO FLOAT32 AND MOVED TO DEVICE ###
-    ### MODIFY THE LINE BELOW ONLY ###
-    # test_input = lifestyle_tensor.to(torch.float32).to(DEVICE)  # Convert to float32 and move to device
-    test_input = X_train.to(torch.float32).to(DEVICE)  # Convert to float32 and move to device
+        # Prepare data for visualization
+        ### TEST_INPUT SHOULD BE THE TRAINING DATASET AS A TENSOR, CONVERTED TO FLOAT32 AND MOVED TO DEVICE ###
+        ### MODIFY THE LINE BELOW ONLY ###
+        # test_input = lifestyle_tensor.to(torch.float32).to(DEVICE)  # Convert to float32 and move to device
+        test_input = X_train.to(torch.float32).to(DEVICE)  # Convert to float32 and move to device
 
-    ######### DO NOT CHANGE THE CODE BELOW #########
-    feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
-    # visualize_all_symptoms_attributions_parallel(model, test_input, feature_names, output_size)
-    visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, xticknames, output_size)
-    # for symptom_index in range(output_size):
-    #     print(f"Visualizing attributions for symptom {symptom_index + 1}")
-    #     visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, target_index=symptom_index)
+        ######### DO NOT CHANGE THE CODE BELOW #########
+        feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
+        # visualize_all_symptoms_attributions_parallel(model, test_input, feature_names, output_size)
+        visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, xticknames, output_size)
+        # for symptom_index in range(output_size):
+        #     print(f"Visualizing attributions for symptom {symptom_index + 1}")
+        #     visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, target_index=symptom_index)
 
 
 if __name__ == "__main__":
