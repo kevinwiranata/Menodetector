@@ -134,7 +134,7 @@ def main():
 
     args = get_args()
     demographic_research()
-    lifestyle_tensor, symptom_tensor = load_data()
+    lifestyle_tensor, symptom_tensor, xticknames = load_data()
     output_size = symptom_tensor.shape[1]
     train_epoch, train_batch_size, train_lr, train_hidden_layer_size = None, None, None, None
 
@@ -203,7 +203,7 @@ def main():
     feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
 
     # Call visualization function
-    visualize_attributions_bar_plot(model, test_input, feature_names, target_index=0)  # You can change target_index if needed
+    visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, target_index=0)  # You can change target_index if needed
 
 
 if __name__ == "__main__":

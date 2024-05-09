@@ -84,7 +84,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from captum.attr import IntegratedGradients
 
-def visualize_attributions_bar_plot(model, input_data, feature_names, target_index=0):
+def visualize_attributions_bar_plot(model, input_data, feature_names, xticknames, target_index=0):
     """
     Visualizes the attributions of the input features towards the model's predictions using Captum's IntegratedGradients.
     Averages attributions across both samples and time steps for each feature and displays them in a bar plot.
@@ -114,7 +114,7 @@ def visualize_attributions_bar_plot(model, input_data, feature_names, target_ind
     plt.xlabel('Features')
     plt.ylabel('Average Attribution')
     plt.title('Average Feature Attributions across Time Steps and Samples')
-    plt.xticks(rotation=90)  # Rotate feature names for better visibility
+    plt.xticks(feature_names, xticknames, rotation=90)  # Rotate feature names for better visibility
     plt.show()
 
     # Print attributions and convergence delta
