@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from load_data import load_data
 from data_preprocessing import demographic_research
 import torch
-from captum_analysis import compute_attributions_for_dataset, visualize_attributions, plot_average_attributions
+from captum_analysis import visualize_attributions_bar_plot
 
 
 if torch.cuda.is_available():
@@ -183,16 +183,27 @@ def main():
     )
 
     # Run Captum Analysis here and other plots
-    model.to(DEVICE).float()
-    batch_size = 64  # Define based on your GPU's memory
-    dataloader = torch.utils.data.DataLoader(
-        dataset=torch.utils.data.TensorDataset(lifestyle_tensor.to(torch.float32), symptom_tensor.to(torch.float32)),
-        batch_size=batch_size,
-        shuffle=False
-    )
+    # model.to(DEVICE).float()
+    # batch_size = 64  # Define based on your GPU's memory
+    # dataloader = torch.utils.data.DataLoader(
+    #     dataset=torch.utils.data.TensorDataset(lifestyle_tensor.to(torch.float32), symptom_tensor.to(torch.float32)),
+    #     batch_size=batch_size,
+    #     shuffle=False
+    # )
+    # feature_names = [f"Feature {i}" for i in range(input_data.size(2))]  # Adjust the range according to the number of features
+    # visualize_attributions_bar_plot(model, input_data, feature_names)
+    # # attributions = compute_attributions_for_dataset(model, dataloader, DEVICE)
+    # # plot_average_attributions(attributions)
 
-    attributions = compute_attributions_for_dataset(model, dataloader, DEVICE)
-    plot_average_attributions(attributions)
+    # Run Captum Analysis here and other plots
+    model.to(DEVICE).float()
+
+    # Prepare data for visualization
+    test_input = lifestyle_tensor.to(torch.float32).to(DEVICE)  # Selecting the first 100 samples for visualization
+    feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
+
+    # Call visualization function
+    visualize_attributions_bar_plot(model, test_input, feature_names, target_index=0)  # You can change target_index if needed
 
 
 if __name__ == "__main__":
