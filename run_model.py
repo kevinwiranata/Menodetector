@@ -202,8 +202,10 @@ def main():
     test_input = lifestyle_tensor.to(torch.float32).to(DEVICE)  # Selecting the first 100 samples for visualization
     feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
 
-    # Call visualization function
-    visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, target_index=0)  # You can change target_index if needed
+    for symptom_index in range(output_size):
+        print(f"Visualizing attributions for symptom {symptom_index + 1}")
+        visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, target_index=symptom_index)
+
 
 
 if __name__ == "__main__":
