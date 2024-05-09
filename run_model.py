@@ -1,6 +1,7 @@
 import argparse
 import torch
 import torch.nn as nn
+from baseline import SVR_baseline, random_forest_baseline
 from load_data import load_data
 from data_preprocessing import demographic_research
 from tqdm import tqdm
@@ -116,7 +117,7 @@ def main():
     args = get_args()
     if not args.silent:
         demographic_research()
-    (X_train, y_train), (X_test, y_test), xticknames, symptomnames = load_data(args)
+    (X_train, y_train), (X_test, y_test), lifestyle_tensor, symptom_tensor, xticknames, symptomnames = load_data(args)
     X_train, y_train = X_train.to(torch.float32), y_train.to(torch.float32)
     X_test, y_test = X_test.to(torch.float32), y_test.to(torch.float32)
 
@@ -154,6 +155,14 @@ def main():
 
     avg_train_loss, avg_val_loss = train(model, train_loader, val_loader, train_epoch, optimizer, loss_function)
     print(f"Final Training Loss: {avg_train_loss}, Final Validation Loss: {avg_val_loss}")
+
+    # Run baseline models
+    features = lifestyle_tensor.float()
+    targets = symptom_tensor.float()
+    features_time_avg = features.mean(dim=1)
+    random_forest_baseline(features_time_avg, targets)
+    SVR_baseline(features_time_avg, targets)
+
     # Run Captum Analysis here and other plots
     model.to(DEVICE).float()
 

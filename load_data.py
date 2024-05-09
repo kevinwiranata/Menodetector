@@ -261,4 +261,11 @@ def load_data(args, test_size=0.2, random_state=None):
     X_train, X_test = lifestyle_tensor[train_idx], lifestyle_tensor[test_idx]
     y_train, y_test = symptom_tensor[train_idx], symptom_tensor[test_idx]
 
-    return (X_train, y_train), (X_test, y_test), life_style_df.columns.tolist()[2:], symptom.columns.tolist()[2:]
+    return (
+        (X_train, y_train),
+        (X_test, y_test),
+        lifestyle_tensor,
+        symptom_tensor,
+        life_style_df.columns.tolist()[2:],
+        symptom.columns.tolist()[2:],
+    )
