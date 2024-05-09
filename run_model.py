@@ -100,15 +100,15 @@ def grid_search(X_train, y_train, X_val, y_val, output_size, param_grid):
         train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=params["batch_size"], shuffle=True)
         val_loader = DataLoader(TensorDataset(X_val, y_val), batch_size=params["batch_size"], shuffle=False)
 
-        _, avg_val_loss = train(model, train_loader, val_loader, params["epochs"], optimizer, loss_function)
+        avg_train_loss, _ = train(model, train_loader, val_loader, params["epochs"], optimizer, loss_function)
 
-        if avg_val_loss < best_loss:
-            best_loss = avg_val_loss
+        if avg_train_loss < best_loss:
+            best_loss = avg_train_loss
             best_params = params
 
-        print(f"Tested {params}, Validation Loss: {avg_val_loss}")
+        print(f"Tested {params}, Train Loss: {avg_train_loss}")
 
-    print(f"Best Parameters: {best_params}, Best Validation Loss: {best_loss}")
+    print(f"Best Parameters: {best_params}, Best Train Loss: {avg_train_loss}")
     return best_params
 
 
