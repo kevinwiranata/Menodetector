@@ -4,6 +4,7 @@ import numpy as np
 from nltk.stem import PorterStemmer
 from nltk import download
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 from data_preprocessing import show_income
 
 download("punkt")
@@ -15,30 +16,33 @@ elif torch.backends.mps.is_available():
 else:
     DEVICE = torch.device("cpu")
 
+
 def draw_null_rate(df, data_class, condition):
-    null_rate_per_id = df.drop('SWANID1', axis=1).groupby(df['SWANID1']).apply(lambda x: (x.isna()).mean(axis=1).mean())
+    null_rate_per_id = df.drop("SWANID1", axis=1).groupby(df["SWANID1"]).apply(lambda x: (x.isna()).mean(axis=1).mean())
     null_rate_per_id.head()
     plt.hist(null_rate_per_id)
-    plt.title(f'Null Rate for Patients in {data_class} dataset {condition} Cleaning')
-    plt.xlabel('Null Rate')
-    plt.ylabel('Count of Patients')
-    plt.grid(axis='x')
+    plt.title(f"Null Rate for Patients in {data_class} dataset {condition} Cleaning")
+    plt.xlabel("Null Rate")
+    plt.ylabel("Count of Patients")
+    plt.grid(axis="x")
     plt.show()
 
     plt.figure(figsize=(10, 10))
     nan_percentage = df[df.columns].isna().mean()
     print(type(nan_percentage))
-    nan_percentage.sort_values().plot(kind="barh", color='skyblue')
-    plt.title(f'Missing Rate In Each Column in {data_class} dataset {condition} Cleaning')
-    plt.xlabel('feature')
-    plt.ylabel('missing rate')
-    plt.grid(axis='x')
-    plt.xticks(fontsize='xx-small')
+    nan_percentage.sort_values().plot(kind="barh", color="skyblue")
+    plt.title(f"Missing Rate In Each Column in {data_class} dataset {condition} Cleaning")
+    plt.xlabel("feature")
+    plt.ylabel("missing rate")
+    plt.grid(axis="x")
+    plt.xticks(fontsize="xx-small")
     plt.show()
 
-def clean_invalid_values(df, columns, data_class):
+
+def clean_invalid_values(df, columns, data_class, args):
     # Calculate the null rate across features for each unique ID
-    draw_null_rate(df, data_class, "before")
+    if not args.silent:
+        draw_null_rate(df, data_class, "before")
     for column in columns:
         if column in df.columns:
             # Strip leading/trailing spaces and replace values with length <= 2 with NaN
@@ -53,13 +57,14 @@ def clean_invalid_values(df, columns, data_class):
     df.drop(columns=columns_to_drop, inplace=True)
     nan_percentage_new = df[df.columns].isna().mean()
     print(type(nan_percentage_new))
-    draw_null_rate(df, data_class, "after")
-    #nan_percentage_new.plot(kind="bar")
-    #plt.title(f"Missing Rate In Each Column for {data_class}")
-    #plt.xlabel("feature")
-    #plt.ylabel("missing rate")
-    #plt.xticks(fontsize="small")
-    #plt.show()
+    if not args.silent:
+        draw_null_rate(df, data_class, "after")
+    # nan_percentage_new.plot(kind="bar")
+    # plt.title(f"Missing Rate In Each Column for {data_class}")
+    # plt.xlabel("feature")
+    # plt.ylabel("missing rate")
+    # plt.xticks(fontsize="small")
+    # plt.show()
 
     return df
 
@@ -172,7 +177,7 @@ def transform_to_tensor(df, mode):
 
 
 # preprocess the data
-def preprocess(df, data_class):
+def preprocess(df, data_class, args):
 
     stemmer = PorterStemmer()
     data_type = {"categorical": [], "numerical": []}
@@ -218,7 +223,7 @@ def preprocess(df, data_class):
                 data_type["numerical"].append(column)
 
     df = replace_negatives_in_all_columns(df)
-    df = clean_invalid_values(df, df.columns, data_class)
+    df = clean_invalid_values(df, df.columns, data_class, args)
     df = data_imputation(df, data_type)
     df = df.dropna(subset=["AGE1"])
     for column in df.columns:
@@ -228,25 +233,34 @@ def preprocess(df, data_class):
     return df
 
 
-def load_data():
+def load_data(args, test_size=0.2, random_state=None):
     symptom_df = pd.read_csv("data/merged_symptom_only.tsv", sep="\t")
     life_style_df = pd.read_csv("data/merged_lifestyle_only.tsv", sep="\t")
-    show_income(life_style_df)
-    symptom = preprocess(symptom_df, "Symptom")
-    life_style = preprocess(life_style_df, "Lifestyle")
-    #life_style = life_style.drop(["PROVSPC1"], axis=1)
+    if not args.silent:
+        show_income(life_style_df)
+    symptom = preprocess(symptom_df, "Symptom", args)
+    life_style = preprocess(life_style_df, "Lifestyle", args)
     symptom = symptom.drop(["PREGNAN1", "PRGNANT1", "BROKEBO1"], axis=1)
-    # Save column names to a text file
-    with open('symptom_cols.txt', 'w') as f:
+
+    with open("symptom_cols.txt", "w") as f:
         print(f"Saving {len(symptom.columns)} symptom column names")
         for column in symptom.columns:
             f.write(f"{column}\n")
-    # Save column names to a text file
-    with open('lifestyle_cols.txt', 'w') as f:
+
+    with open("lifestyle_cols.txt", "w") as f:
         print(f"Saving {len(life_style.columns)} lifestyle column names")
         for column in life_style.columns:
             f.write(f"{column}\n")
 
     lifestyle_tensor = transform_to_tensor(life_style, "lifestyle")
     symptom_tensor = transform_to_tensor(symptom, "symptom")
-    return lifestyle_tensor, symptom_tensor, life_style_df.columns.tolist()[2:], symptom.columns.tolist()[2:]
+
+    # Perform train/test split
+    indices = list(range(len(lifestyle_tensor)))
+    train_idx, test_idx = train_test_split(indices, test_size=test_size, random_state=random_state, shuffle=True)
+
+    # Prepare the train and test data
+    X_train, X_test = lifestyle_tensor[train_idx], lifestyle_tensor[test_idx]
+    y_train, y_test = symptom_tensor[train_idx], symptom_tensor[test_idx]
+
+    return (X_train, y_train), (X_test, y_test), life_style_df.columns.tolist()[2:], symptom.columns.tolist()[2:]

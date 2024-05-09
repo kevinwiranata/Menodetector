@@ -1,12 +1,25 @@
 import argparse
 import torch
 import torch.nn as nn
-from sklearn.model_selection import train_test_split
 from load_data import load_data
 from data_preprocessing import demographic_research
-import torch
-from captum_analysis import visualize_attributions_bar_plot, visualize_all_symptoms_attributions, visualize_all_symptoms_attributions_parallel, visualize_all_symptoms_attributions_gpu
+from tqdm import tqdm
+from sklearn.model_selection import ParameterGrid
+from torch.utils.data import DataLoader, TensorDataset
+from captum_analysis import (
+    visualize_attributions_bar_plot,
+    visualize_all_symptoms_attributions,
+    visualize_all_symptoms_attributions_parallel,
+    visualize_all_symptoms_attributions_gpu,
+)
 
+SEED = 42
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 if torch.cuda.is_available():
     DEVICE = torch.device("cuda")
@@ -21,15 +34,17 @@ seq_length = 6  # number of years
 
 def get_args():
     parser = argparse.ArgumentParser(description="Menopause training loop")
-    # Training hyperparameters
-    parser.add_argument("-g", "--grid_search", type=bool, default=False, help="Whether to perform grid search or not")
     parser.add_argument(
-        "-op", "--use_optimal_params", type=bool, default=False, help="Whether to use optimal params or not"
+        "-g", "--grid_search", action="store_true", default=False, help="Whether to perform grid search"
     )
-    parser.add_argument("-e", "--epochs", type=int, default=10, help="Number of epochs to train the model")
+    parser.add_argument(
+        "-op", "--use_optimal_params", action="store_true", default=False, help="Whether to use optimal params"
+    )
+    parser.add_argument("-e", "--epochs", type=int, default=10, help="Number of epochs to train")
     parser.add_argument("-b", "--batch_size", type=int, default=32, help="Batch size for training")
-    parser.add_argument("-lr", "--learning_rate", type=float, default=0.001, help="Learning rate for training")
+    parser.add_argument("-lr", "--learning_rate", type=float, default=0.001, help="Learning rate")
     parser.add_argument("-hl", "--hidden_layer_size", type=int, default=100, help="Hidden layer size for LSTM")
+    parser.add_argument("-s", "--silent", action="store_true", default=False, help="Whether to suppress output")
     args = parser.parse_args()
     return args
 
@@ -43,32 +58,17 @@ class MenopauseSymptomsPredictor(nn.Module):
 
     def forward(self, input_seq):
         lstm_out, _ = self.lstm(input_seq)
-        predictions = self.linear(lstm_out[:, -1, :])  # last time step's output
+        predictions = self.linear(lstm_out[:, -1, :])
         return predictions
 
 
-def tr(model_class, X, y, epochs, batch_size, learning_rate):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    train_idx, val_idx = train_test_split(range(len(X)), test_size=0.2, shuffle=True)
-    train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
-    val_sampler = torch.utils.data.SubsetRandomSampler(val_idx)
-    train_loader = torch.utils.data.DataLoader(
-        dataset=torch.utils.data.TensorDataset(X, y), batch_size=batch_size, sampler=train_sampler
-    )
-    val_loader = torch.utils.data.DataLoader(
-        dataset=torch.utils.data.TensorDataset(X, y), batch_size=batch_size, sampler=val_sampler
-    )
-
-    model = model_class.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    loss_function = torch.nn.MSELoss()
-
-    for _ in range(epochs):
+def train(model, train_loader, val_loader, epochs, optimizer, loss_function):
+    model = model.to(DEVICE)
+    for epoch in range(epochs):
         model.train()
-        train_losses = []  # List to store train losses for each batch
+        train_losses = []
         for X_batch, y_batch in train_loader:
-            X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+            X_batch, y_batch = X_batch.to(DEVICE), y_batch.to(DEVICE)
             optimizer.zero_grad()
             predictions = model(X_batch)
             loss = loss_function(predictions, y_batch)
@@ -76,122 +76,52 @@ def tr(model_class, X, y, epochs, batch_size, learning_rate):
             optimizer.step()
             train_losses.append(loss.item())
 
-        avg_train_loss = sum(train_losses) / len(train_losses)  # Average loss of the last epoch
-
         model.eval()
         val_losses = []
         with torch.no_grad():
             for X_batch, y_batch in val_loader:
-                X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+                X_batch, y_batch = X_batch.to(DEVICE), y_batch.to(DEVICE)
                 predictions = model(X_batch)
                 val_losses.append(loss_function(predictions, y_batch).item())
 
+    avg_train_loss = sum(train_losses) / len(train_losses)
     avg_val_loss = sum(val_losses) / len(val_losses)
-
-    # Return both average validation loss and average training loss of the last epoch
-    return avg_val_loss, avg_train_loss
+    return avg_train_loss, avg_val_loss
 
 
-import torch
-from tqdm import tqdm
-from sklearn.model_selection import train_test_split, ParameterGrid
-
-
-
-def tr_predictionwise_loss(model_class, X, y, epochs, batch_size, learning_rate):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Splitting data
-    train_idx, val_idx = train_test_split(range(len(X)), test_size=0.2, shuffle=True)
-    train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
-    val_sampler = torch.utils.data.SubsetRandomSampler(val_idx)
-    train_loader = torch.utils.data.DataLoader(dataset=torch.utils.data.TensorDataset(X, y),
-                                               batch_size=batch_size, sampler=train_sampler)
-    val_loader = torch.utils.data.DataLoader(dataset=torch.utils.data.TensorDataset(X, y),
-                                             batch_size=batch_size, sampler=val_sampler)
-
-    model = model_class.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    loss_function = torch.nn.MSELoss(reduction='none')  # No reduction to handle losses manually
-
-    for epoch in range(epochs):
-        model.train()
-        train_losses = torch.zeros(45)  # Use a tensor to store losses for each symptom
-        train_count = 0
-        for X_batch, y_batch in train_loader:
-            X_batch, y_batch = X_batch.to(device), y_batch.to(device)
-            optimizer.zero_grad()
-            predictions = model(X_batch)
-            loss = loss_function(predictions, y_batch)
-            loss = loss.mean(dim=0)  # Average the loss for each symptom across the batch
-            total_loss = loss.mean()  # Reduce to a scalar by taking the mean across symptoms
-            total_loss.backward()
-            optimizer.step()
-            train_losses += loss.detach() * y_batch.size(0)  # Sum up the mean losses multiplied by batch size
-            train_count += y_batch.size(0)
-
-        avg_train_losses = train_losses / train_count
-
-        model.eval()
-        val_losses = torch.zeros(45)
-        val_count = 0
-        with torch.no_grad():
-            for X_batch, y_batch in val_loader:
-                X_batch, y_batch = X_batch.to(device), y_batch.to(device)
-                predictions = model(X_batch)
-                loss = loss_function(predictions, y_batch).mean(dim=0)
-                val_losses += loss * y_batch.size(0)
-                val_count += y_batch.size(0)
-
-        avg_val_losses = val_losses / val_count
-
-    # Return average validation and training losses for each symptom
-    return avg_val_losses, avg_train_losses
-
-
-def grid_search(
-    X,
-    y,
-    output_size,
-    param_grid,
-    predictionwise_loss=False
-):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    grid = ParameterGrid(param_grid)
+def grid_search(X_train, y_train, X_val, y_val, output_size, param_grid):
     best_loss = float("inf")
     best_params = {}
-    all_records = []
+    for params in tqdm(list(ParameterGrid(param_grid))):
+        model = MenopauseSymptomsPredictor(n_features, params["hidden_layer_size"], output_size)
+        optimizer = torch.optim.Adam(model.parameters(), lr=params["learning_rate"])
+        loss_function = nn.MSELoss()
 
-    for params in tqdm(grid):
-        model_class = MenopauseSymptomsPredictor(n_features, params["hidden_layer_size"], output_size).to(device)
-        print(f"Testing with parameters: {params}")
-        avg_val_loss, avg_train_loss = tr(
-            model_class,
-            X,
-            y,
-            params["epochs"],
-            params["batch_size"],
-            params["learning_rate"],
-        )
-        print(f"Average Validation Loss: {avg_val_loss}")
-        print(f"Average Training Loss: {avg_train_loss}")
-        all_records.append((params, avg_val_loss, avg_train_loss))
-        if avg_train_loss < best_loss:
-            best_loss = avg_train_loss
+        train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=params["batch_size"], shuffle=True)
+        val_loader = DataLoader(TensorDataset(X_val, y_val), batch_size=params["batch_size"], shuffle=False)
+
+        _, avg_val_loss = train(model, train_loader, val_loader, params["epochs"], optimizer, loss_function)
+
+        if avg_val_loss < best_loss:
+            best_loss = avg_val_loss
             best_params = params
 
-    return best_params, best_loss, all_records
+        print(f"Tested {params}, Validation Loss: {avg_val_loss}")
+
+    print(f"Best Parameters: {best_params}, Best Validation Loss: {best_loss}")
+    return best_params
 
 
 def main():
-
     args = get_args()
-    demographic_research()
-    lifestyle_tensor, symptom_tensor, xticknames, symptomnames = load_data()
-    output_size = symptom_tensor.shape[1]
-    train_epoch, train_batch_size, train_lr, train_hidden_layer_size = None, None, None, None
+    if not args.silent:
+        demographic_research()
+    (X_train, y_train), (X_test, y_test), xticknames, symptomnames = load_data(args)
+    X_train, y_train = X_train.to(torch.float32), y_train.to(torch.float32)
+    X_test, y_test = X_test.to(torch.float32), y_test.to(torch.float32)
 
-    # Define the parameter grid
+    output_size = y_train.shape[1]
+
     if args.grid_search:
         param_grid = {
             "epochs": [10, 12, 14, 16, 18, 20],
@@ -199,20 +129,11 @@ def main():
             "batch_size": [16, 32, 64],
             "hidden_layer_size": [50, 100, 200, 300],
         }
-        best_params, best_loss, all_records = grid_search(
-            lifestyle_tensor.to(torch.float32), symptom_tensor.to(torch.float32), output_size, param_grid, predictionwise_loss=False
-        )
+        best_params = grid_search(X_train, y_train, X_test, y_test, output_size, param_grid)
         train_epoch = best_params["epochs"]
         train_batch_size = best_params["batch_size"]
         train_lr = best_params["learning_rate"]
         train_hidden_layer_size = best_params["hidden_layer_size"]
-
-        print(all_records)
-        with open("result.txt", "w") as file:
-            file.write(str(all_records))
-        print(f"Best Parameters: {best_params}")
-        print(f"Lowest Validation Loss: {best_loss}")
-
     elif args.use_optimal_params:
         train_epoch = 18
         train_batch_size = 16
@@ -223,56 +144,31 @@ def main():
         train_batch_size = args.batch_size
         train_lr = args.learning_rate
         train_hidden_layer_size = args.hidden_layer_size
+
+    train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=train_batch_size, shuffle=True)
+    val_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=train_batch_size, shuffle=False)
+
     model = MenopauseSymptomsPredictor(n_features, train_hidden_layer_size, output_size).to(DEVICE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=train_lr)
+    loss_function = nn.MSELoss()
 
-    # Train model with best params
-    if args.predictionwise_loss:
-        tr_predictionwise_loss(
-            model,
-            lifestyle_tensor.to(torch.float32),
-            symptom_tensor.to(torch.float32),
-            train_epoch,
-            train_batch_size,
-            train_lr,
-        )
-    else:
-        tr(
-            model,
-            lifestyle_tensor.to(torch.float32),
-            symptom_tensor.to(torch.float32),
-            train_epoch,
-            train_batch_size,
-            train_lr,
-        )
-
-    # Run Captum Analysis here and other plots
-    # model.to(DEVICE).float()
-    # batch_size = 64  # Define based on your GPU's memory
-    # dataloader = torch.utils.data.DataLoader(
-    #     dataset=torch.utils.data.TensorDataset(lifestyle_tensor.to(torch.float32), symptom_tensor.to(torch.float32)),
-    #     batch_size=batch_size,
-    #     shuffle=False
-    # )
-    # feature_names = [f"Feature {i}" for i in range(input_data.size(2))]  # Adjust the range according to the number of features
-    # visualize_attributions_bar_plot(model, input_data, feature_names)
-    # # attributions = compute_attributions_for_dataset(model, dataloader, DEVICE)
-    # # plot_average_attributions(attributions)
-
+    avg_train_loss, avg_val_loss = train(model, train_loader, val_loader, train_epoch, optimizer, loss_function)
+    print(f"Final Training Loss: {avg_train_loss}, Final Validation Loss: {avg_val_loss}")
     # Run Captum Analysis here and other plots
     model.to(DEVICE).float()
 
     # Prepare data for visualization
     ### TEST_INPUT SHOULD BE THE TRAINING DATASET AS A TENSOR, CONVERTED TO FLOAT32 AND MOVED TO DEVICE ###
     ### MODIFY THE LINE BELOW ONLY ###
-    test_input = lifestyle_tensor.to(torch.float32).to(DEVICE)  # Convert to float32 and move to device
+    # test_input = lifestyle_tensor.to(torch.float32).to(DEVICE)  # Convert to float32 and move to device
+
     ######### DO NOT CHANGE THE CODE BELOW #########
     feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
     # visualize_all_symptoms_attributions_parallel(model, test_input, feature_names, output_size)
-    visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, xticknames, output_size)
+    # visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, xticknames, output_size)
     # for symptom_index in range(output_size):
     #     print(f"Visualizing attributions for symptom {symptom_index + 1}")
     #     visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, target_index=symptom_index)
-
 
 
 if __name__ == "__main__":
