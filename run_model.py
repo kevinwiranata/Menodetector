@@ -137,7 +137,7 @@ def main():
     elif args.use_optimal_params:
         train_epoch = 16
         train_batch_size = 64
-        train_lr = 0.001
+        train_lr = 0.01
         train_hidden_layer_size = 100
     else:
         train_epoch = args.epochs
