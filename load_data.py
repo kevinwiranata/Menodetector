@@ -235,6 +235,16 @@ def load_data():
     symptom = preprocess(symptom_df, "Symptom")
     life_style = preprocess(life_style_df, "Lifestyle")
     symptom = symptom.drop(["PREGNAN1", "PRGNANT1", "BROKEBO1"], axis=1)
+    # Save column names to a text file
+    with open('symptom_cols.txt', 'w') as f:
+        print(f"Saving {len(symptom.columns)} symptom column names")
+        for column in symptom.columns:
+            f.write(f"{column}\n")
+    # Save column names to a text file
+    with open('lifestyle_cols.txt', 'w') as f:
+        print(f"Saving {len(life_style.columns)} lifestyle column names")
+        for column in life_style.columns:
+            f.write(f"{column}\n")
 
     lifestyle_tensor = transform_to_tensor(life_style, "lifestyle")
     symptom_tensor = transform_to_tensor(symptom, "symptom")
