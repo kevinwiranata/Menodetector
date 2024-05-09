@@ -152,6 +152,7 @@ def setup_device():
 
 def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, output_size):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
     model.to(device)
     input_data = input_data.to(device)
 
