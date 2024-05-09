@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from load_data import load_data
 from data_preprocessing import demographic_research
 import torch
-from captum_analysis import visualize_attributions_bar_plot
+from captum_analysis import visualize_attributions_bar_plot, visualize_all_symptoms_attributions
 
 
 if torch.cuda.is_available():
@@ -201,8 +201,12 @@ def main():
     # Prepare data for visualization
     test_input = lifestyle_tensor.to(torch.float32).to(DEVICE)  # Selecting the first 100 samples for visualization
     feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
+<<<<<<< HEAD
     print(output_size)
     print(len(symptomnames))
+=======
+    visualize_all_symptoms_attributions(model, test_input, feature_names, output_size)
+>>>>>>> 11c29a96fb7aaab455fe5e5bdd1405102810112f
     for symptom_index in range(output_size):
         print(f"Visualizing attributions for symptom {symptomnames[symptom_index]}")
         visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, symptomnames[symptom_index], target_index=symptom_index)
