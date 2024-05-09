@@ -170,20 +170,10 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, ou
     model.eval()
     torch.set_grad_enabled(False)
 
-    # Assuming the second dimension is the features dimension
-    # Check the shape of attributions first
-    print("Shape of individual attributions:", all_attributions[0].shape)
-
-    # Average attributions across all symptoms, ensuring the correct axis is used
-    mean_attributions = np.mean(np.array(all_attributions), axis=2)
+    # Assuming we need to average across all dimensions except the last one (features)
+    mean_attributions = np.mean(np.array(all_attributions), axis=(0, 1, 2))
     print("Shape of mean attributions:", mean_attributions.shape)
 
-    if mean_attributions.ndim > 1:
-        mean_attributions = np.mean(mean_attributions, axis=tuple(range(1, mean_attributions.ndim)))
-
-    print("Final shape of mean attributions:", mean_attributions.shape)
-
-    # Ensure the lengths match
     assert len(feature_names) == mean_attributions.shape[0], "Mismatch between number of features and attributions"
 
     plt.figure(figsize=(10, 5))
