@@ -84,6 +84,9 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from captum.attr import IntegratedGradients
+import os
+from concurrent.futures import ThreadPoolExecutor
+
 
 def visualize_attributions_bar_plot(model, input_data, feature_names, xticknames, symptomname, target_index=0):
     """
@@ -162,3 +165,28 @@ def visualize_all_symptoms_attributions(model, input_data, feature_names, output
 
 # Example usage:
 # visualize_all_symptoms_attributions(model, test_input, feature_names, output_size)
+
+def compute_attributions(model, input_data, target_index, ig):
+    attributions, _ = ig.attribute(input_data, target=target_index, return_convergence_delta=True)
+    return attributions.cpu().detach().numpy()
+
+def visualize_all_symptoms_attributions_parallel(model, input_data, feature_names, output_size, num_threads=os.cpu_count()):
+    model.eval()
+    ig = IntegratedGradients(model)
+    
+    # Use ThreadPoolExecutor to parallelize attribution computation
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = [executor.submit(compute_attributions, model, input_data, idx, ig) for idx in range(output_size)]
+        all_attributions = [future.result() for future in futures]
+    
+    mean_attributions = np.mean(np.array(all_attributions), axis=0)
+    if mean_attributions.ndim > 1:
+        mean_attributions = np.mean(mean_attributions, axis=tuple(range(1, mean_attributions.ndim)))
+    
+    plt.figure(figsize=(10, 5))
+    plt.bar(feature_names, mean_attributions, color='blue')
+    plt.xticks(rotation=90)
+    plt.title("Mean Attributions Across All Symptoms")
+    plt.xlabel("Features")
+    plt.ylabel("Attribution")
+    plt.show()
