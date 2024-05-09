@@ -119,4 +119,4 @@ def visualize_attributions_bar_plot(model, input_data, feature_names, xticknames
 
     # Print attributions and convergence delta
     print("Attributions:\n", average_attributions)
-    print("Convergence Delta:", delta.item())
+    print("Convergence Delta:", delta)
