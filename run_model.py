@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split
 from load_data import load_data
 from data_preprocessing import demographic_research
 import torch
+from captum_analysis import compute_attributions_for_dataset, visualize_attributions, plot_average_attributions
 
 
 if torch.cuda.is_available():
@@ -182,6 +183,17 @@ def main():
     )
 
     # Run Captum Analysis here and other plots
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    batch_size = 64  # Define based on your GPU's memory
+    dataloader = torch.utils.data.DataLoader(
+        dataset=torch.utils.data.TensorDataset(lifestyle_tensor, symptom_tensor),
+        batch_size=batch_size,
+        shuffle=False
+    )
+
+    attributions = compute_attributions_for_dataset(model, dataloader, device)
+    plot_average_attributions(attributions)
 
 
 if __name__ == "__main__":
