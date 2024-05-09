@@ -1,85 +1,3 @@
-# import torch
-# import numpy as np
-# import matplotlib.pyplot as plt
-# import seaborn as sns
-# from captum.attr import IntegratedGradients
-
-# def visualize_attributions(model, input_data, target_index=0):
-#     """
-#     Visualizes the attributions of the input features towards the model's predictions using Captum's IntegratedGradients.
-
-#     Args:
-#     model (torch.nn.Module): The trained model.
-#     input_data (torch.Tensor): The input tensor to the model.
-#     target_index (int): The index of the output for which to compute attributions.
-#     """
-#     # Ensure model is in evaluation mode
-#     model.eval()
-
-#     # Initialize IntegratedGradients with the model
-#     ig = IntegratedGradients(model)
-
-#     # Compute the attributions using IntegratedGradients
-#     attributions, delta = ig.attribute(input_data, target=target_index, return_convergence_delta=True)
-#     attributions = attributions.detach().numpy()
-
-#     # Print attributions and convergence delta
-#     print("Attributions:\n", attributions)
-#     print("Convergence Delta:", delta.item())
-
-#     # Visualize the attributions as a heatmap
-#     plt.figure(figsize=(12, 6))
-#     ax = sns.heatmap(attributions[0], annot=True, cmap='coolwarm', fmt=".2f")
-#     ax.set_title('Feature Importance by Timestep')
-#     ax.set_xlabel('Features')
-#     ax.set_ylabel('Timestep')
-#     plt.show()
-
-
-# def compute_attributions_for_dataset(model, dataloader, device):
-#     """
-#     Computes attributions for the entire dataset using Captum's IntegratedGradients in a batch-wise manner.
-
-#     Args:
-#     model (torch.nn.Module): The trained model.
-#     dataloader (torch.utils.data.DataLoader): DataLoader containing the dataset.
-#     device (torch.device): The device (CPU or GPU) the model is running on.
-#     """
-#     model.eval()
-#     ig = IntegratedGradients(model)
-
-#     # Store attributions
-#     all_attributions = []
-
-#     for inputs, _ in dataloader:
-#         inputs = inputs.to(device)
-#         attributions = ig.attribute(inputs, target=0)  # Compute attributions for target index 0
-#         all_attributions.append(attributions.cpu().detach().numpy())
-
-#     # Combine all attributions
-#     all_attributions = np.concatenate(all_attributions, axis=0)
-
-#     return all_attributions
-
-# def plot_average_attributions(all_attributions):
-#     """
-#     Plots the average attributions across all samples as a heatmap.
-
-#     Args:
-#     all_attributions (np.array): A numpy array containing attributions for each sample in the dataset.
-#                                  The expected shape is (num_samples, sequence_length, num_features).
-#     """
-#     # Compute the mean attributions across all samples
-#     mean_attributions = np.mean(all_attributions, axis=0)
-
-#     # Plotting the heatmap of average attributions
-#     plt.figure(figsize=(12, 6))
-#     ax = sns.heatmap(mean_attributions, annot=True, cmap='coolwarm', fmt=".2f")
-#     ax.set_title('Average Feature Importance by Timestep')
-#     ax.set_xlabel('Features')
-#     ax.set_ylabel('Timestep')
-#     plt.show()
-
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -163,9 +81,6 @@ def visualize_all_symptoms_attributions(model, input_data, feature_names, output
     plt.ylabel("Attribution")
     plt.show()
 
-# Example usage:
-# visualize_all_symptoms_attributions(model, test_input, feature_names, output_size)
-
 def compute_attributions(model, input_data, target_index, ig):
     attributions, _ = ig.attribute(input_data, target=target_index, return_convergence_delta=True)
     return attributions.cpu().detach().numpy()
@@ -190,3 +105,46 @@ def visualize_all_symptoms_attributions_parallel(model, input_data, feature_name
     plt.xlabel("Features")
     plt.ylabel("Attribution")
     plt.show()
+
+
+import torch
+from captum.attr import IntegratedGradients
+import numpy as np
+import matplotlib.pyplot as plt
+
+def setup_device():
+    """ Set up GPU device if available. """
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    else:
+        return torch.device("cpu")
+
+def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, output_size):
+    device = setup_device()
+    model.to(device)
+    input_data = input_data.to(device)
+
+    model.eval()
+    ig = IntegratedGradients(model)
+    
+    all_attributions = []
+    for symptom_index in range(output_size):
+        print(f"Computing attributions for symptom {symptom_index + 1}")
+        attributions, _ = ig.attribute(input_data, target=symptom_index, return_convergence_delta=True)
+        all_attributions.append(attributions.detach().cpu().numpy())  # Move data back to CPU for visualization
+    
+    mean_attributions = np.mean(np.array(all_attributions), axis=0)
+    if mean_attributions.ndim > 1:
+        mean_attributions = np.mean(mean_attributions, axis=tuple(range(1, mean_attributions.ndim)))
+    
+    plt.figure(figsize=(10, 5))
+    plt.bar(feature_names, mean_attributions, color='blue')
+    plt.xticks(rotation=90)
+    plt.title("Mean Attributions Across All Symptoms")
+    plt.xlabel("Features")
+    plt.ylabel("Attribution")
+    plt.show()
+
+# Example usage:
+# model and test_input should be prepared beforehand
+# visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, output_size)
