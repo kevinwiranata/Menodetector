@@ -88,16 +88,16 @@ def compute_attributions(model, input_data, target_index, ig):
 def visualize_all_symptoms_attributions_parallel(model, input_data, feature_names, output_size, num_threads=os.cpu_count()):
     model.eval()
     ig = IntegratedGradients(model)
-    
+
     # Use ThreadPoolExecutor to parallelize attribution computation
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(compute_attributions, model, input_data, idx, ig) for idx in range(output_size)]
         all_attributions = [future.result() for future in futures]
-    
+
     mean_attributions = np.mean(np.array(all_attributions), axis=0)
     if mean_attributions.ndim > 1:
         mean_attributions = np.mean(mean_attributions, axis=tuple(range(1, mean_attributions.ndim)))
-    
+
     plt.figure(figsize=(10, 5))
     plt.bar(feature_names, mean_attributions, color='blue')
     plt.xticks(rotation=90)
@@ -126,17 +126,17 @@ def setup_device():
 
 #     model.eval()
 #     ig = IntegratedGradients(model)
-    
+
 #     all_attributions = []
 #     for symptom_index in range(output_size):
 #         print(f"Computing attributions for symptom {symptom_index + 1}")
 #         attributions, _ = ig.attribute(input_data, target=symptom_index, return_convergence_delta=True)
 #         all_attributions.append(attributions.detach().cpu().numpy())  # Move data back to CPU for visualization
-    
+
 #     mean_attributions = np.mean(np.array(all_attributions), axis=0)
 #     if mean_attributions.ndim > 1:
 #         mean_attributions = np.mean(mean_attributions, axis=tuple(range(1, mean_attributions.ndim)))
-    
+
 #     plt.figure(figsize=(10, 5))
 #     plt.bar(feature_names, mean_attributions, color='blue')
 #     plt.xticks(rotation=90)
@@ -150,7 +150,7 @@ def setup_device():
 # model and test_input should be prepared beforehand
 # visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, output_size)
 
-def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, output_size):
+def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, xticknames, output_size):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     model.to(device)
@@ -178,7 +178,7 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, ou
 
     plt.figure(figsize=(10, 5))
     plt.bar(feature_names, mean_attributions, color='blue')
-    plt.xticks(rotation=90)
+    plt.xticks(feature_names, xticknames, rotation=90)
     plt.title("Mean Attributions Across All Symptoms")
     plt.xlabel("Features")
     plt.ylabel("Attribution")
