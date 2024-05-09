@@ -143,6 +143,7 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, ou
     plt.title("Mean Attributions Across All Symptoms")
     plt.xlabel("Features")
     plt.ylabel("Attribution")
+    plt.savefig('captum_attributes_all.png')  # Save the figure as a PNG file
     plt.show()
 
 # Example usage:
