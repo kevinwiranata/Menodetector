@@ -55,6 +55,7 @@ To run the code simply run the <code>run_model.py</code> file.
 There are several arg options when running this file:
 - `--grid_search` to run grid search
 - `--use_optimal_params` to use optimal params
+- `--predictionwise_loss` to decide whether calculate prediction-wise loss. Only works when `--use_optimal_params` is set to "True".
 - `--epochs`, `--learning_rate`, `--hidden_layer_size`, `--batch_size` to specificy hyperparameters
 
 You can also run <code> run_model.py -h </code> to see all the available arguments

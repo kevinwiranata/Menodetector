@@ -97,11 +97,64 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split, ParameterGrid
 
 
+
+def tr_predictionwise_loss(model_class, X, y, epochs, batch_size, learning_rate):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Splitting data
+    train_idx, val_idx = train_test_split(range(len(X)), test_size=0.2, shuffle=True)
+    train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
+    val_sampler = torch.utils.data.SubsetRandomSampler(val_idx)
+    train_loader = torch.utils.data.DataLoader(dataset=torch.utils.data.TensorDataset(X, y),
+                                               batch_size=batch_size, sampler=train_sampler)
+    val_loader = torch.utils.data.DataLoader(dataset=torch.utils.data.TensorDataset(X, y),
+                                             batch_size=batch_size, sampler=val_sampler)
+
+    model = model_class.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    loss_function = torch.nn.MSELoss(reduction='none')  # No reduction to handle losses manually
+
+    for epoch in range(epochs):
+        model.train()
+        train_losses = torch.zeros(45)  # Use a tensor to store losses for each symptom
+        train_count = 0
+        for X_batch, y_batch in train_loader:
+            X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+            optimizer.zero_grad()
+            predictions = model(X_batch)
+            loss = loss_function(predictions, y_batch)
+            loss = loss.mean(dim=0)  # Average the loss for each symptom across the batch
+            total_loss = loss.mean()  # Reduce to a scalar by taking the mean across symptoms
+            total_loss.backward()
+            optimizer.step()
+            train_losses += loss.detach() * y_batch.size(0)  # Sum up the mean losses multiplied by batch size
+            train_count += y_batch.size(0)
+
+        avg_train_losses = train_losses / train_count
+
+        model.eval()
+        val_losses = torch.zeros(45)
+        val_count = 0
+        with torch.no_grad():
+            for X_batch, y_batch in val_loader:
+                X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+                predictions = model(X_batch)
+                loss = loss_function(predictions, y_batch).mean(dim=0)
+                val_losses += loss * y_batch.size(0)
+                val_count += y_batch.size(0)
+
+        avg_val_losses = val_losses / val_count
+
+    # Return average validation and training losses for each symptom
+    return avg_val_losses, avg_train_losses
+
+
 def grid_search(
     X,
     y,
     output_size,
     param_grid,
+    predictionwise_loss=False
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     grid = ParameterGrid(param_grid)
@@ -147,7 +200,7 @@ def main():
             "hidden_layer_size": [50, 100, 200, 300],
         }
         best_params, best_loss, all_records = grid_search(
-            lifestyle_tensor.to(torch.float32), symptom_tensor.to(torch.float32), output_size, param_grid
+            lifestyle_tensor.to(torch.float32), symptom_tensor.to(torch.float32), output_size, param_grid, predictionwise_loss=False
         )
         train_epoch = best_params["epochs"]
         train_batch_size = best_params["batch_size"]
@@ -173,14 +226,24 @@ def main():
     model = MenopauseSymptomsPredictor(n_features, train_hidden_layer_size, output_size).to(DEVICE)
 
     # Train model with best params
-    tr(
-        model,
-        lifestyle_tensor.to(torch.float32),
-        symptom_tensor.to(torch.float32),
-        train_epoch,
-        train_batch_size,
-        train_lr,
-    )
+    if args.predictionwise_loss:
+        tr_predictionwise_loss(
+            model,
+            lifestyle_tensor.to(torch.float32),
+            symptom_tensor.to(torch.float32),
+            train_epoch,
+            train_batch_size,
+            train_lr,
+        )
+    else:
+        tr(
+            model,
+            lifestyle_tensor.to(torch.float32),
+            symptom_tensor.to(torch.float32),
+            train_epoch,
+            train_batch_size,
+            train_lr,
+        )
 
     # Run Captum Analysis here and other plots
     # model.to(DEVICE).float()
