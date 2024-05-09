@@ -119,20 +119,61 @@ def setup_device():
     else:
         return torch.device("cpu")
 
+# def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, output_size):
+#     device = setup_device()
+#     model.to(device)
+#     input_data = input_data.to(device)
+
+#     model.eval()
+#     ig = IntegratedGradients(model)
+    
+#     all_attributions = []
+#     for symptom_index in range(output_size):
+#         print(f"Computing attributions for symptom {symptom_index + 1}")
+#         attributions, _ = ig.attribute(input_data, target=symptom_index, return_convergence_delta=True)
+#         all_attributions.append(attributions.detach().cpu().numpy())  # Move data back to CPU for visualization
+    
+#     mean_attributions = np.mean(np.array(all_attributions), axis=0)
+#     if mean_attributions.ndim > 1:
+#         mean_attributions = np.mean(mean_attributions, axis=tuple(range(1, mean_attributions.ndim)))
+    
+#     plt.figure(figsize=(10, 5))
+#     plt.bar(feature_names, mean_attributions, color='blue')
+#     plt.xticks(rotation=90)
+#     plt.title("Mean Attributions Across All Symptoms")
+#     plt.xlabel("Features")
+#     plt.ylabel("Attribution")
+#     plt.savefig('captum_attributes_all.png')  # Save the figure as a PNG file
+#     plt.show()
+
+# Example usage:
+# model and test_input should be prepared beforehand
+# visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, output_size)
+
 def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, output_size):
-    device = setup_device()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     input_data = input_data.to(device)
 
-    model.eval()
     ig = IntegratedGradients(model)
-    
     all_attributions = []
+
+    # Switch to train mode for gradient computation
+    model.train()  # Enable train mode to compute gradients
+    torch.set_grad_enabled(True)  # Ensure gradients can be computed
+
     for symptom_index in range(output_size):
         print(f"Computing attributions for symptom {symptom_index + 1}")
-        attributions, _ = ig.attribute(input_data, target=symptom_index, return_convergence_delta=True)
-        all_attributions.append(attributions.detach().cpu().numpy())  # Move data back to CPU for visualization
-    
+        try:
+            attributions, _ = ig.attribute(input_data, target=symptom_index, return_convergence_delta=True)
+            all_attributions.append(attributions.detach().cpu().numpy())  # Move data back to CPU for visualization
+        except Exception as e:
+            print(f"Error computing attributions for symptom {symptom_index + 1}: {str(e)}")
+
+    # Switch back to eval mode after computation
+    model.eval()
+    torch.set_grad_enabled(False)  # Disable gradient computations outside training
+
     mean_attributions = np.mean(np.array(all_attributions), axis=0)
     if mean_attributions.ndim > 1:
         mean_attributions = np.mean(mean_attributions, axis=tuple(range(1, mean_attributions.ndim)))
@@ -146,6 +187,3 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, ou
     plt.savefig('captum_attributes_all.png')  # Save the figure as a PNG file
     plt.show()
 
-# Example usage:
-# model and test_input should be prepared beforehand
-# visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, output_size)
