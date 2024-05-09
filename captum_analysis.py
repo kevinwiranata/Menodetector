@@ -84,6 +84,9 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from captum.attr import IntegratedGradients
+import os
+from concurrent.futures import ThreadPoolExecutor
+
 
 def visualize_attributions_bar_plot(model, input_data, feature_names, xticknames, target_index=0):
     """
@@ -162,13 +165,12 @@ def visualize_all_symptoms_attributions(model, input_data, feature_names, output
 
 # Example usage:
 # visualize_all_symptoms_attributions(model, test_input, feature_names, output_size)
-from concurrent.futures import ThreadPoolExecutor
 
 def compute_attributions(model, input_data, target_index, ig):
     attributions, _ = ig.attribute(input_data, target=target_index, return_convergence_delta=True)
     return attributions.cpu().detach().numpy()
 
-def visualize_all_symptoms_attributions_parallel(model, input_data, feature_names, output_size, num_threads=4):
+def visualize_all_symptoms_attributions_parallel(model, input_data, feature_names, output_size, num_threads=os.cpu_count()):
     model.eval()
     ig = IntegratedGradients(model)
     
