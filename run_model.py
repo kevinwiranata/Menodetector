@@ -262,7 +262,10 @@ def main():
     model.to(DEVICE).float()
 
     # Prepare data for visualization
-    test_input = lifestyle_tensor.to(torch.float32).to(DEVICE)  # Selecting the first 100 samples for visualization
+    ### TEST_INPUT SHOULD BE THE TRAINING DATASET AS A TENSOR, CONVERTED TO FLOAT32 AND MOVED TO DEVICE ###
+    ### MODIFY THE LINE BELOW ONLY ###
+    test_input = lifestyle_tensor.to(torch.float32).to(DEVICE)  # Convert to float32 and move to device
+    ######### DO NOT CHANGE THE CODE BELOW #########
     feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
     # visualize_all_symptoms_attributions_parallel(model, test_input, feature_names, output_size)
     visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, xticknames, output_size)

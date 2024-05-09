@@ -234,7 +234,7 @@ def load_data():
     show_income(life_style_df)
     symptom = preprocess(symptom_df, "Symptom")
     life_style = preprocess(life_style_df, "Lifestyle")
-    life_style = life_style.drop(["PROVSPC1"], axis=1)
+    #life_style = life_style.drop(["PROVSPC1"], axis=1)
     symptom = symptom.drop(["PREGNAN1", "PRGNANT1", "BROKEBO1"], axis=1)
     # Save column names to a text file
     with open('symptom_cols.txt', 'w') as f:
