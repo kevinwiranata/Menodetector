@@ -171,8 +171,6 @@ def transform_to_tensor(df, mode):
         final_tensor = final_tensor.reshape(-1, max_entries_per_group, final_tensor.shape[-1])
     else:
         final_tensor = final_tensor.reshape(-1, final_tensor.shape[-1])
-
-    print(f"Final tensor shape: {final_tensor.shape}")
     return final_tensor
 
 

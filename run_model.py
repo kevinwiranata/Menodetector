@@ -108,7 +108,7 @@ def grid_search(X_train, y_train, X_val, y_val, output_size, param_grid):
 
         print(f"Tested {params}, Train Loss: {avg_train_loss}")
 
-    print(f"Best Parameters: {best_params}, Best Train Loss: {avg_train_loss}")
+    print(f"Best Parameters: {best_params}, Best Train Loss: {best_loss}")
     return best_params
 
 
@@ -135,8 +135,8 @@ def main():
         train_lr = best_params["learning_rate"]
         train_hidden_layer_size = best_params["hidden_layer_size"]
     elif args.use_optimal_params:
-        train_epoch = 18
-        train_batch_size = 16
+        train_epoch = 16
+        train_batch_size = 64
         train_lr = 0.001
         train_hidden_layer_size = 100
     else:
