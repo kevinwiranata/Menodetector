@@ -175,7 +175,7 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, ou
     print("Shape of individual attributions:", all_attributions[0].shape)
 
     # Average attributions across all symptoms, ensuring the correct axis is used
-    mean_attributions = np.mean(np.array(all_attributions), axis=0)
+    mean_attributions = np.mean(np.array(all_attributions), axis=2)
     print("Shape of mean attributions:", mean_attributions.shape)
 
     if mean_attributions.ndim > 1:
