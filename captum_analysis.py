@@ -176,7 +176,7 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, xt
 
     assert len(feature_names) == mean_attributions.shape[0], "Mismatch between number of features and attributions"
 
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(12, 8))
     plt.bar(feature_names, mean_attributions, color='blue')
     plt.xticks(feature_names, xticknames, rotation=90)
     plt.title("Mean Attributions Across All Symptoms")
