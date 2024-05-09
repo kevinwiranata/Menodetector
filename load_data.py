@@ -248,4 +248,4 @@ def load_data():
 
     lifestyle_tensor = transform_to_tensor(life_style, "lifestyle")
     symptom_tensor = transform_to_tensor(symptom, "symptom")
-    return lifestyle_tensor, symptom_tensor, life_style_df.columns.tolist()[2:]
+    return lifestyle_tensor, symptom_tensor, life_style_df.columns.tolist()[2:], symptom.columns.tolist()[2:]

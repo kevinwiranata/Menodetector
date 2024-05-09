@@ -134,7 +134,7 @@ def main():
 
     args = get_args()
     demographic_research()
-    lifestyle_tensor, symptom_tensor, xticknames = load_data()
+    lifestyle_tensor, symptom_tensor, xticknames, symptomnames = load_data()
     output_size = symptom_tensor.shape[1]
     train_epoch, train_batch_size, train_lr, train_hidden_layer_size = None, None, None, None
 
@@ -201,10 +201,11 @@ def main():
     # Prepare data for visualization
     test_input = lifestyle_tensor.to(torch.float32).to(DEVICE)  # Selecting the first 100 samples for visualization
     feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
-
+    print(output_size)
+    print(len(symptomnames))
     for symptom_index in range(output_size):
-        print(f"Visualizing attributions for symptom {symptom_index + 1}")
-        visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, target_index=symptom_index)
+        print(f"Visualizing attributions for symptom {symptomnames[symptom_index]}")
+        visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, symptomnames[symptom_index], target_index=symptom_index)
 
 
 
