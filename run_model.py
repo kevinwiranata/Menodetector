@@ -183,16 +183,15 @@ def main():
     )
 
     # Run Captum Analysis here and other plots
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    model.to(DEVICE).float()
     batch_size = 64  # Define based on your GPU's memory
     dataloader = torch.utils.data.DataLoader(
-        dataset=torch.utils.data.TensorDataset(lifestyle_tensor, symptom_tensor),
+        dataset=torch.utils.data.TensorDataset(lifestyle_tensor.to(torch.float32), symptom_tensor.to(torch.float32)),
         batch_size=batch_size,
         shuffle=False
     )
 
-    attributions = compute_attributions_for_dataset(model, dataloader, device)
+    attributions = compute_attributions_for_dataset(model, dataloader, DEVICE)
     plot_average_attributions(attributions)
 
 
