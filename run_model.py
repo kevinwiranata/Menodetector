@@ -94,49 +94,39 @@ def train(model, train_loader, val_loader, epochs, optimizer, loss_function):
 
 def train_per_target(model, train_loader, val_loader, epochs, optimizer, loss_function):
     model = model.to(DEVICE)
-    num_targets = None
-
-    for epoch in range(epochs):
-        model.train()
+    target_losses = {'train': [], 'val': []}
+    
+    n_targets = train_loader.dataset.tensors[1].shape[1]
+    
+    for target_idx in range(n_targets):
         train_losses = []
-        for X_batch, y_batch in train_loader:
-            X_batch, y_batch = X_batch.to(DEVICE), y_batch.to(DEVICE)
-            optimizer.zero_grad()
-            predictions = model(X_batch)
-            loss = loss_function(predictions, y_batch, reduction='none')
-            loss.mean().backward()
-            optimizer.step()
-            train_losses.append(loss.detach().cpu().numpy())
-
-        if num_targets is None:
-            num_targets = train_losses[0].shape[1]
-            train_losses_per_target = [0.0] * num_targets
-
-        for loss_array in train_losses:
-            for i in range(num_targets):
-                train_losses_per_target[i] += loss_array[:, i].sum()
-
-        num_train_samples = len(train_loader.dataset)
-        avg_train_loss_per_target = [total_loss / num_train_samples for total_loss in train_losses_per_target]
-
-        model.eval()
         val_losses = []
-        with torch.no_grad():
-            for X_batch, y_batch in val_loader:
-                X_batch, y_batch = X_batch.to(DEVICE), y_batch.to(DEVICE)
-                predictions = model(X_batch)
-                loss = loss_function(predictions, y_batch, reduction='none')
-                val_losses.append(loss.cpu().numpy())
-
-        val_losses_per_target = [0.0] * num_targets
-        for loss_array in val_losses:
-            for i in range(num_targets):
-                val_losses_per_target[i] += loss_array[:, i].sum()
-
-        num_val_samples = len(val_loader.dataset)
-        avg_val_loss_per_target = [total_loss / num_val_samples for total_loss in val_losses_per_target]
-
-    return avg_train_loss_per_target, avg_val_loss_per_target
+        
+        for epoch in range(epochs):
+            model.train()
+            for X_batch, y_batch in train_loader:
+                X_batch, y_batch = X_batch.to(DEVICE), y_batch[:, target_idx].to(DEVICE)
+                optimizer.zero_grad()
+                predictions = model(X_batch)[:, target_idx]  # Predict for the current target
+                loss = loss_function(predictions, y_batch)
+                loss.backward()
+                optimizer.step()
+                train_losses.append(loss.item())
+            
+            model.eval()
+            with torch.no_grad():
+                for X_batch, y_batch in val_loader:
+                    X_batch, y_batch = X_batch.to(DEVICE), y_batch[:, target_idx].to(DEVICE)
+                    predictions = model(X_batch)[:, target_idx]  # Validate for the current target
+                    val_loss = loss_function(predictions, y_batch)
+                    val_losses.append(val_loss.item())
+        
+        avg_train_loss = sum(train_losses) / len(train_losses)
+        avg_val_loss = sum(val_losses) / len(val_losses)
+        target_losses['train'].append(avg_train_loss)
+        target_losses['val'].append(avg_val_loss)
+    
+    return target_losses['train'], target_losses['val']
 
 
 def grid_search(X_train, y_train, X_val, y_val, output_size, param_grid):
