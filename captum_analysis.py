@@ -159,32 +159,38 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, ou
     ig = IntegratedGradients(model)
     all_attributions = []
 
-    # Switch to train mode for gradient computation
     model.train()  # Enable train mode to compute gradients
-    torch.set_grad_enabled(True)  # Ensure gradients can be computed
+    torch.set_grad_enabled(True)
 
     for symptom_index in range(output_size):
         print(f"Computing attributions for symptom {symptom_index + 1}")
-        try:
-            attributions, _ = ig.attribute(input_data, target=symptom_index, return_convergence_delta=True)
-            all_attributions.append(attributions.detach().cpu().numpy())  # Move data back to CPU for visualization
-        except Exception as e:
-            print(f"Error computing attributions for symptom {symptom_index + 1}: {str(e)}")
+        attributions, _ = ig.attribute(input_data, target=symptom_index, return_convergence_delta=True)
+        all_attributions.append(attributions.detach().cpu().numpy())
 
-    # Switch back to eval mode after computation
     model.eval()
-    torch.set_grad_enabled(False)  # Disable gradient computations outside training
+    torch.set_grad_enabled(False)
 
+    # Assuming the second dimension is the features dimension
+    # Check the shape of attributions first
+    print("Shape of individual attributions:", all_attributions[0].shape)
+
+    # Average attributions across all symptoms, ensuring the correct axis is used
     mean_attributions = np.mean(np.array(all_attributions), axis=0)
+    print("Shape of mean attributions:", mean_attributions.shape)
+
     if mean_attributions.ndim > 1:
         mean_attributions = np.mean(mean_attributions, axis=tuple(range(1, mean_attributions.ndim)))
-    
+
+    print("Final shape of mean attributions:", mean_attributions.shape)
+
+    # Ensure the lengths match
+    assert len(feature_names) == mean_attributions.shape[0], "Mismatch between number of features and attributions"
+
     plt.figure(figsize=(10, 5))
     plt.bar(feature_names, mean_attributions, color='blue')
     plt.xticks(rotation=90)
     plt.title("Mean Attributions Across All Symptoms")
     plt.xlabel("Features")
     plt.ylabel("Attribution")
-    plt.savefig('captum_attributes_all.png')  # Save the figure as a PNG file
+    plt.savefig('captum_attributes_all.png')
     plt.show()
-
