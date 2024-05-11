@@ -184,11 +184,14 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, xt
     plt.ylabel("Attribution")
     plt.savefig('captum_attributes_all.png')
     plt.show()
+    
+import os
+import shutil
 
 def visualize_symptoms_attributions(model, input_data, feature_names, xticknames, symptom_names):
     """
-    Computes and visualizes the attributions of the input features towards the model's predictions for multiple symptoms.
-    Averages attributions across both samples and time steps for each feature.
+    Computes and visualizes the attributions of the input features towards the model's predictions for multiple symptoms,
+    and saves the plots in a zip file.
 
     Args:
     model (torch.nn.Module): The trained model.
@@ -197,6 +200,11 @@ def visualize_symptoms_attributions(model, input_data, feature_names, xticknames
     xticknames (list of str): Names of each feature for x-axis labeling.
     symptom_names (list of str): Names of each symptom.
     """
+    # Set up directory for storing images
+    folder_name = 'captum'
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+    
     # Ensure model is in evaluation mode and use CUDA if available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -219,8 +227,16 @@ def visualize_symptoms_attributions(model, input_data, feature_names, xticknames
         plt.ylabel('Average Attribution')
         plt.title(f'Average Feature Attributions for {symptom_name}')
         plt.xticks(range(len(feature_names)), xticknames, rotation=90)
-        plt.savefig(f'captum_attributes_{symptom_name}.png')
-        plt.show()
+        file_path = os.path.join(folder_name, f'captum_attributes_{symptom_name}.png')
+        plt.savefig(file_path)
+        plt.close()  # Close the figure to free memory
 
         print(f"Attributions for {symptom_name}:\n", average_attributions)
         print(f"Convergence Delta for {symptom_name}:", delta)
+
+    # Zip the folder
+    shutil.make_archive(folder_name, 'zip', folder_name)
+
+    # Optionally, remove the folder after zipping if desired
+    # shutil.rmtree(folder_name)
+
