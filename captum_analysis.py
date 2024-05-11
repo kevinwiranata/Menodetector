@@ -150,6 +150,41 @@ def setup_device():
 # model and test_input should be prepared beforehand
 # visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, output_size)
 
+# def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, xticknames, output_size):
+#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#     print(f"Using device: {device}")
+#     model.to(device)
+#     input_data = input_data.to(device)
+
+#     ig = IntegratedGradients(model)
+#     all_attributions = []
+
+#     model.train()  # Enable train mode to compute gradients
+#     torch.set_grad_enabled(True)
+
+#     for symptom_index in range(output_size):
+#         print(f"Computing attributions for symptom {symptom_index + 1}")
+#         attributions, _ = ig.attribute(input_data, target=symptom_index, return_convergence_delta=True)
+#         all_attributions.append(attributions.detach().cpu().numpy())
+
+#     model.eval()
+#     torch.set_grad_enabled(False)
+
+#     # Assuming we need to average across all dimensions except the last one (features)
+#     mean_attributions = np.mean(np.array(all_attributions), axis=(0, 1, 2))
+#     print("Shape of mean attributions:", mean_attributions.shape)
+
+#     assert len(feature_names) == mean_attributions.shape[0], "Mismatch between number of features and attributions"
+
+#     plt.figure(figsize=(12, 8))
+#     plt.bar(feature_names, mean_attributions, color='blue')
+#     plt.xticks(feature_names, xticknames, rotation=90)
+#     plt.title("Mean Attributions Across All Symptoms")
+#     plt.xlabel("Features")
+#     plt.ylabel("Attribution")
+#     plt.savefig('captum_attributes_all.png')
+#     plt.show()
+
 def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, xticknames, output_size):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -159,31 +194,37 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, xt
     ig = IntegratedGradients(model)
     all_attributions = []
 
-    model.train()  # Enable train mode to compute gradients
+    # Enable training mode to compute gradients due to LSTM requirements
+    model.train()
     torch.set_grad_enabled(True)
 
     for symptom_index in range(output_size):
         print(f"Computing attributions for symptom {symptom_index + 1}")
         attributions, _ = ig.attribute(input_data, target=symptom_index, return_convergence_delta=True)
-        all_attributions.append(attributions.detach().cpu().numpy())
+        # Calculate the mean across the sample and time step axes
+        mean_attributions = np.mean(attributions.detach().cpu().numpy(), axis=(0, 1))
+        all_attributions.append(mean_attributions)
 
-    model.eval()
+    # Disable gradient computations as they are no longer needed
     torch.set_grad_enabled(False)
+    model.eval()
 
-    # Assuming we need to average across all dimensions except the last one (features)
-    mean_attributions = np.mean(np.array(all_attributions), axis=(0, 1, 2))
-    print("Shape of mean attributions:", mean_attributions.shape)
+    # Calculate the mean of absolute values across all symptoms
+    final_attributions = np.mean(np.abs(np.array(all_attributions)), axis=0)
+    print("Shape of final attributions:", final_attributions.shape)
 
-    assert len(feature_names) == mean_attributions.shape[0], "Mismatch between number of features and attributions"
+    assert len(feature_names) == final_attributions.shape[0], "Mismatch between number of features and attributions"
 
     plt.figure(figsize=(12, 8))
-    plt.bar(feature_names, mean_attributions, color='blue')
+    plt.bar(feature_names, final_attributions, color='blue')
     plt.xticks(feature_names, xticknames, rotation=90)
-    plt.title("Mean Attributions Across All Symptoms")
+    plt.title("Mean Absolute Attributions Across All Symptoms")
     plt.xlabel("Features")
-    plt.ylabel("Attribution")
-    plt.savefig('captum_attributes_all.png')
+    plt.ylabel("Mean Absolute Attribution")
+    plt.savefig('captum_attributes_all_abs.png')
     plt.show()
+
+
 
 import os
 import shutil
