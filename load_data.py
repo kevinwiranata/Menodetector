@@ -260,6 +260,8 @@ def load_data(args, test_size=0.2, random_state=None):
     # Prepare the train and test data
     X_train, X_test = lifestyle_tensor[train_idx], lifestyle_tensor[test_idx]
     y_train, y_test = symptom_tensor[train_idx], symptom_tensor[test_idx]
+    print(len(symptom.columns), symptom.columns)
+    print(len(X_train[0]))
 
     return (
         (X_train, y_train),

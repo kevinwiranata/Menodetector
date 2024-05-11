@@ -242,6 +242,8 @@ def visualize_symptoms_attributions(model, input_data, feature_names, xticknames
     symptom_names (list of str): Names of each symptom.
     """
     # Set up directory for storing images
+    print(len(symptom_names))
+    print(symptom_names)
     folder_name = 'captum'
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
