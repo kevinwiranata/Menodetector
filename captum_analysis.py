@@ -184,7 +184,7 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, xt
     plt.ylabel("Attribution")
     plt.savefig('captum_attributes_all.png')
     plt.show()
-    
+
 import os
 import shutil
 
@@ -213,10 +213,11 @@ def visualize_symptoms_attributions(model, input_data, feature_names, xticknames
 
     # Initialize IntegratedGradients with the model
     ig = IntegratedGradients(model)
+    model.train()  # Enable train mode to compute gradients
+    torch.set_grad_enabled(True)
 
     # Process each symptom
     for index, symptom_name in enumerate(symptom_names):
-        model.eval()  # Make sure the model is in eval mode
         attributions, delta = ig.attribute(input_data, target=index, return_convergence_delta=True)
         average_attributions = np.mean(attributions.detach().cpu().numpy(), axis=(0, 1))  # Averaging across batch and time steps
 
@@ -233,6 +234,9 @@ def visualize_symptoms_attributions(model, input_data, feature_names, xticknames
 
         print(f"Attributions for {symptom_name}:\n", average_attributions)
         print(f"Convergence Delta for {symptom_name}:", delta)
+
+    model.eval()
+    torch.set_grad_enabled(False)
 
     # Zip the folder
     shutil.make_archive(folder_name, 'zip', folder_name)
