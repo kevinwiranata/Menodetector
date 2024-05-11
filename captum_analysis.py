@@ -184,3 +184,43 @@ def visualize_all_symptoms_attributions_gpu(model, input_data, feature_names, xt
     plt.ylabel("Attribution")
     plt.savefig('captum_attributes_all.png')
     plt.show()
+
+def visualize_symptoms_attributions(model, input_data, feature_names, xticknames, symptom_names):
+    """
+    Computes and visualizes the attributions of the input features towards the model's predictions for multiple symptoms.
+    Averages attributions across both samples and time steps for each feature.
+
+    Args:
+    model (torch.nn.Module): The trained model.
+    input_data (torch.Tensor): The input tensor to the model.
+    feature_names (list of str): Names of each feature.
+    xticknames (list of str): Names of each feature for x-axis labeling.
+    symptom_names (list of str): Names of each symptom.
+    """
+    # Ensure model is in evaluation mode and use CUDA if available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    model.to(device)
+    input_data = input_data.to(device)
+
+    # Initialize IntegratedGradients with the model
+    ig = IntegratedGradients(model)
+
+    # Process each symptom
+    for index, symptom_name in enumerate(symptom_names):
+        model.eval()  # Make sure the model is in eval mode
+        attributions, delta = ig.attribute(input_data, target=index, return_convergence_delta=True)
+        average_attributions = np.mean(attributions.detach().cpu().numpy(), axis=(0, 1))  # Averaging across batch and time steps
+
+        # Plotting
+        plt.figure(figsize=(12, 6))
+        plt.bar(feature_names, average_attributions)
+        plt.xlabel('Features')
+        plt.ylabel('Average Attribution')
+        plt.title(f'Average Feature Attributions for {symptom_name}')
+        plt.xticks(range(len(feature_names)), xticknames, rotation=90)
+        plt.savefig(f'captum_attributes_{symptom_name}.png')
+        plt.show()
+
+        print(f"Attributions for {symptom_name}:\n", average_attributions)
+        print(f"Convergence Delta for {symptom_name}:", delta)

@@ -12,6 +12,7 @@ from captum_analysis import (
     visualize_all_symptoms_attributions,
     visualize_all_symptoms_attributions_parallel,
     visualize_all_symptoms_attributions_gpu,
+    visualize_symptoms_attributions,
 )
 
 SEED = 42
@@ -218,7 +219,8 @@ def main():
         ######### DO NOT CHANGE THE CODE BELOW #########
         feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
         # visualize_all_symptoms_attributions_parallel(model, test_input, feature_names, output_size)
-        visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, xticknames, output_size)
+        # visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, xticknames, output_size)
+        visualize_all_symptoms_attributions(model, test_input, feature_names, xticknames, output_size)
         # for symptom_index in range(output_size):
         #     print(f"Visualizing attributions for symptom {symptom_index + 1}")
         #     visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, target_index=symptom_index)
