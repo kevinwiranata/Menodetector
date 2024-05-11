@@ -219,8 +219,8 @@ def main():
         ######### DO NOT CHANGE THE CODE BELOW #########
         feature_names = [f"Feature {i+1}" for i in range(n_features)]  # Generate feature names
         # visualize_all_symptoms_attributions_parallel(model, test_input, feature_names, output_size)
-        visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, xticknames, output_size)
-        # visualize_symptoms_attributions(model, test_input, feature_names, xticknames, symptomnames)
+        # visualize_all_symptoms_attributions_gpu(model, test_input, feature_names, xticknames, output_size)
+        visualize_symptoms_attributions(model, test_input, feature_names, xticknames, symptomnames)
         # for symptom_index in range(output_size):
         #     print(f"Visualizing attributions for symptom {symptom_index + 1}")
         #     visualize_attributions_bar_plot(model, test_input, feature_names, xticknames, target_index=symptom_index)
